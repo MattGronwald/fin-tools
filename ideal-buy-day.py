@@ -20,8 +20,8 @@ def get_best_buy_dates(ticker_symbol):
     print(f"Analyzing {len(df)} days of data...")
 
     # Add month and day columns
-    df['Month'] = df.index.month
-    df['Day'] = df.index.day
+    df['Month'] = df.index.to_series().dt.month
+    df['Day'] = df.index.to_series().dt.day
 
     # Group by month and day to find average price for each calendar day
     daily_avg = df.groupby(['Month', 'Day'])['Low'].mean()
