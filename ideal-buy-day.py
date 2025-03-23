@@ -5,6 +5,8 @@ import matplotlib.pyplot as plt
 import os
 import json
 import pickle
+import argparse
+import sys
 
 # Create a directory for cached data
 CACHE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "cache")
@@ -225,7 +227,44 @@ def create_day_of_month_visualization(df, ticker_symbol, years, filter_days=None
     print(f"Chart saved as {ticker_symbol}_{years}yr{filename_suffix}_day_analysis.png")
     plt.show()
 
+def parse_args():
+    parser = argparse.ArgumentParser(description='Analyze the best days to buy a stock.')
+    
+    parser.add_argument('ticker', nargs='?', help='Stock ticker symbol')
+    parser.add_argument('-y', '--years', type=int, default=10, 
+                        help='Number of years to analyze (default: 10)')
+    parser.add_argument('-d', '--days', type=int, nargs='+',
+                        help='Specific days of month to analyze (e.g., 1 4 7 10 13 16 19 22 25)')
+    parser.add_argument('--broker-days', action='store_true',
+                        help='Use default broker days (1, 4, 7, 10, 13, 16, 19, 22, 25)')
+    
+    return parser.parse_args()
+
 def main():
+    # Parse command line arguments
+    args = parse_args()
+    
+    # Default broker allowed days
+    default_broker_days = [1, 4, 7, 10, 13, 16, 19, 22, 25]
+    
+    # Check if we're running with command line arguments
+    if args.ticker:
+        symbol = args.ticker.upper()
+        years = args.years
+        
+        # Determine which days to filter by
+        filter_days = None
+        if args.broker_days:
+            filter_days = default_broker_days
+            print(f"Using default broker days: {filter_days}")
+        elif args.days:
+            filter_days = [day for day in args.days if 1 <= day <= 31]
+            print(f"Analyzing only days: {filter_days}")
+            
+        get_best_buy_dates(symbol, years, filter_days)
+        return
+    
+    # If no command line arguments, use interactive mode
     symbol = input("Enter stock ticker symbol: ").upper()
 
     # Get the number of years to analyze with error handling
@@ -248,9 +287,7 @@ def main():
     
     filter_days = None
     if filter_option == 'y':
-        # Default broker allowed days
-        default_days = [1, 4, 7, 10, 13, 16, 19, 22, 25]
-        print(f"Default broker allowed days: {default_days}")
+        print(f"Default broker allowed days: {default_broker_days}")
         custom_days = input("Enter your custom days separated by commas, or press Enter to use defaults: ")
         
         if custom_days.strip():
@@ -260,12 +297,12 @@ def main():
                 filter_days = [day for day in filter_days if 1 <= day <= 31]
                 if not filter_days:
                     print("No valid days provided. Using default days.")
-                    filter_days = default_days
+                    filter_days = default_broker_days
             except ValueError:
                 print("Invalid input. Using default days.")
-                filter_days = default_days
+                filter_days = default_broker_days
         else:
-            filter_days = default_days
+            filter_days = default_broker_days
             
         print(f"Analyzing only days: {filter_days}")
     
