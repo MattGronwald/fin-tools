@@ -49,6 +49,13 @@ def get_best_buy_dates(ticker_symbol):
     create_day_of_month_visualization(df, ticker_symbol)
 
 def create_day_of_month_visualization(df, ticker_symbol):
+    # Get company name
+    try:
+        stock = yf.Ticker(ticker_symbol)
+        company_name = stock.info.get('shortName', ticker_symbol)
+    except:
+        company_name = ticker_symbol  # Fallback if company name can't be retrieved
+    
     # Calculate average price for each day of month across all years
     day_avg = df.groupby('Day')['Low'].mean()
 
@@ -70,10 +77,10 @@ def create_day_of_month_visualization(df, ticker_symbol):
     # Highlight the worst day to buy in red
     bars[max_day-1].set_color('red')
 
-    # Add labels and title
+    # Add labels and title with company name
     plt.xlabel('Day of Month')
     plt.ylabel('Average Price ($)')
-    plt.title(f'Average Low Price by Day of Month for {ticker_symbol} (10-Year Analysis)')
+    plt.title(f'Average Low Price by Day of Month for {company_name} ({ticker_symbol}) (10-Year Analysis)')
 
     # Add a grid to make it easier to read
     plt.grid(axis='y', linestyle='--', alpha=0.7)
