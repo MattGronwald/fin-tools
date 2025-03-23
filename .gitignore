@@ -184,3 +184,5 @@ cython_debug/
 *.ico
 *.svg
 *.webp
+# Cache files
+cache/
