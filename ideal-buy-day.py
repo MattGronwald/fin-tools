@@ -86,26 +86,34 @@ def create_day_of_month_visualization(df, ticker_symbol, years):
     # Highlight the worst day to buy in red
     bars[max_day-1].set_color('red')
 
-    # Add labels and title with company name and actual years analyzed
+    # Add labels
     plt.xlabel('Day of Month')
     plt.ylabel('Average Price ($)')
-    plt.title(f'Average Low Price by Day of Month for {company_name} ({ticker_symbol}) ({years}-Year Analysis)')
 
     # Add a grid to make it easier to read
     plt.grid(axis='y', linestyle='--', alpha=0.7)
 
+    # Position annotations to avoid title
+    # Calculate y bounds for better positioning
+    y_min, y_max = plt.ylim()
+    y_range = y_max - y_min
+
     # Add text annotation for the best day
     plt.annotate(f'Best Day: {min_day}\n${min_price:.2f}',
                  xy=(min_day, min_price),
-                 xytext=(min_day, min_price*0.95),  # Position below bar
+                 xytext=(min_day, min_price - y_range*0.1),  # Position below bar
                  arrowprops=dict(facecolor='green', shrink=0.05, width=1.5),
                  ha='center',
                  bbox=dict(boxstyle="round,pad=0.3", fc="white", ec="green", alpha=0.8))
 
-    # Add text annotation for the worst day
+    # Add text annotation for the worst day - with better positioning
+    x_offset = 0
+    if 10 <= max_day <= 20:
+        x_offset = 3  # Move to the side if in the middle
+
     plt.annotate(f'Worst Day: {max_day}\n${max_price:.2f}',
                  xy=(max_day, max_price),
-                 xytext=(max_day, max_price*1.05),  # Position above bar
+                 xytext=(max_day + x_offset, max_price + y_range*0.1),  # Position above bar
                  arrowprops=dict(facecolor='red', shrink=0.05, width=1.5),
                  ha='center',
                  bbox=dict(boxstyle="round,pad=0.3", fc="white", ec="red", alpha=0.8))
@@ -122,15 +130,18 @@ def create_day_of_month_visualization(df, ticker_symbol, years):
     price_diff = max_price - min_price
     percent_diff = (price_diff / max_price) * 100
 
-    # Add a text box with summary statistics
+    # Add a text box with summary statistics - moved to bottom right
     text_info = (f"Potential savings: ${price_diff:.2f} ({percent_diff:.1f}%)\n"
                 f"Best day: {min_day} (${min_price:.2f})\n"
                 f"Worst day: {max_day} (${max_price:.2f})")
 
-    plt.figtext(0.15, 0.02, text_info, bbox=dict(boxstyle="round,pad=0.5",
-                                                fc="white", ec="black", alpha=0.8))
+    # Position the text box in bottom right
+    plt.figtext(0.75, 0.02, text_info, bbox=dict(boxstyle="round,pad=0.5",
+                                               fc="white", ec="black", alpha=0.8))
 
-    plt.tight_layout()
+    # Set explicit subplot adjustments to ensure plenty of room for the title
+    plt.subplots_adjust(top=0.85)  # Add much more space at the top
+
     plt.savefig(f'{ticker_symbol}_{years}yr_day_analysis.png')
     print(f"Chart saved as {ticker_symbol}_{years}yr_day_analysis.png")
     plt.show()
