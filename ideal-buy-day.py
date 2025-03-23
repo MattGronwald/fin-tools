@@ -46,7 +46,7 @@ def save_to_cache(ticker_symbol, years, data):
     except Exception as e:
         print(f"Error caching data: {e}")
 
-def get_best_buy_dates(ticker_symbol, years=10):
+def get_best_buy_dates(ticker_symbol, years=10, filter_days=None):
     # First check if we have cached data from today
     df = get_cached_data(ticker_symbol, years)
 
@@ -82,6 +82,18 @@ def get_best_buy_dates(ticker_symbol, years=10):
         try:
             # Get data for this month
             month_data = daily_avg.xs(month, level='Month')
+            
+            # If filter days is provided, only consider those days
+            if filter_days:
+                # First check if we have any filter days in this month's data
+                valid_days = [day for day in filter_days if day in month_data.index]
+                if valid_days:
+                    # Filter the data to only include allowed days
+                    month_data = month_data.loc[valid_days]
+                else:
+                    # If none of the filter days are available for this month
+                    best_days[month] = "No matching days"
+                    continue
 
             # Find the day with the lowest average price
             best_day = month_data.idxmin()
@@ -96,9 +108,9 @@ def get_best_buy_dates(ticker_symbol, years=10):
         print(f"Best day to buy in {month_name}: {best_days[month]}")
 
     # Create visualization for average price by day of month (across all months)
-    create_day_of_month_visualization(df, ticker_symbol, years)
+    create_day_of_month_visualization(df, ticker_symbol, years, filter_days)
 
-def create_day_of_month_visualization(df, ticker_symbol, years):
+def create_day_of_month_visualization(df, ticker_symbol, years, filter_days=None):
     # Get company name
     try:
         stock = yf.Ticker(ticker_symbol)
@@ -108,6 +120,15 @@ def create_day_of_month_visualization(df, ticker_symbol, years):
 
     # Calculate average price for each day of month across all years
     day_avg = df.groupby('Day')['Low'].mean()
+    
+    # If filter days is provided, only show those days
+    if filter_days:
+        # Filter the data to only include allowed days
+        day_avg = day_avg[day_avg.index.isin(filter_days)]
+        
+        if day_avg.empty:
+            print("No data available for the specified filter days.")
+            return
 
     # Create figure with explicit space at the top for the title
     plt.figure(figsize=(12, 8))  # Increased height even more
@@ -116,8 +137,9 @@ def create_day_of_month_visualization(df, ticker_symbol, years):
     plt.suptitle(f'Average Low Price by Day of Month for {company_name} ({ticker_symbol})',
                  fontsize=16, y=0.98)
 
-    # Add a subtitle with years information
-    plt.title(f'{years}-Year Analysis', fontsize=13, pad=20)
+    # Add a subtitle with years information and filter info if applicable
+    filter_info = f" - Analyzing only days: {', '.join(map(str, sorted(filter_days)))}" if filter_days else ""
+    plt.title(f'{years}-Year Analysis{filter_info}', fontsize=13, pad=20)
 
     # Create the main plot
     bars = plt.bar(day_avg.index, day_avg.values, color='skyblue')
@@ -131,10 +153,12 @@ def create_day_of_month_visualization(df, ticker_symbol, years):
     max_price = day_avg.max()
 
     # Highlight the best day to buy in green
-    bars[min_day-1].set_color('green')
+    min_idx = day_avg.index.get_loc(min_day)
+    bars[min_idx].set_color('green')
 
     # Highlight the worst day to buy in red
-    bars[max_day-1].set_color('red')
+    max_idx = day_avg.index.get_loc(max_day)
+    bars[max_idx].set_color('red')
 
     # Add labels
     plt.xlabel('Day of Month')
@@ -158,8 +182,8 @@ def create_day_of_month_visualization(df, ticker_symbol, years):
 
     # Add text annotation for the worst day - with better positioning
     x_offset = 0
-    if 10 <= max_day <= 20:
-        x_offset = 3  # Move to the side if in the middle
+    if len(day_avg) > 3 and min_day < max_day < max(day_avg.index) - min(day_avg.index)/2:
+        x_offset = 1  # Move to the side if in the middle
 
     plt.annotate(f'Worst Day: {max_day}\n${max_price:.2f}',
                  xy=(max_day, max_price),
@@ -168,13 +192,16 @@ def create_day_of_month_visualization(df, ticker_symbol, years):
                  ha='center',
                  bbox=dict(boxstyle="round,pad=0.3", fc="white", ec="red", alpha=0.8))
 
-    # Set the x-axis to show all days
-    plt.xticks(range(1, 32))
+    # Set the x-axis to show only the days we're analyzing
+    if filter_days:
+        plt.xticks(sorted(filter_days))
+    else:
+        plt.xticks(range(1, 32))
 
     # Add a horizontal line at the average price
     avg_price = day_avg.mean()
     plt.axhline(y=avg_price, color='purple', linestyle='--', alpha=0.7)
-    plt.text(31, avg_price, f'Avg: ${avg_price:.2f}', va='center')
+    plt.text(max(day_avg.index), avg_price, f'Avg: ${avg_price:.2f}', va='center')
 
     # Calculate potential savings
     price_diff = max_price - min_price
@@ -192,8 +219,10 @@ def create_day_of_month_visualization(df, ticker_symbol, years):
     # Set explicit subplot adjustments to ensure plenty of room for the title
     plt.subplots_adjust(top=0.85)  # Add much more space at the top
 
-    plt.savefig(f'{ticker_symbol}_{years}yr_day_analysis.png')
-    print(f"Chart saved as {ticker_symbol}_{years}yr_day_analysis.png")
+    # Create filename with filter indication if used
+    filename_suffix = "_filtered" if filter_days else ""
+    plt.savefig(f'{ticker_symbol}_{years}yr{filename_suffix}_day_analysis.png')
+    print(f"Chart saved as {ticker_symbol}_{years}yr{filename_suffix}_day_analysis.png")
     plt.show()
 
 def main():
@@ -213,8 +242,34 @@ def main():
             break
         except ValueError:
             print("Please enter a valid number.")
-
-    get_best_buy_dates(symbol, years)
+    
+    # Ask if user wants to filter to specific days
+    filter_option = input("Do you want to analyze specific days only? (y/n, default is n): ").lower()
+    
+    filter_days = None
+    if filter_option == 'y':
+        # Default broker allowed days
+        default_days = [1, 4, 7, 10, 13, 16, 19, 22, 25]
+        print(f"Default broker allowed days: {default_days}")
+        custom_days = input("Enter your custom days separated by commas, or press Enter to use defaults: ")
+        
+        if custom_days.strip():
+            try:
+                filter_days = [int(day.strip()) for day in custom_days.split(',')]
+                # Validate days are in valid range
+                filter_days = [day for day in filter_days if 1 <= day <= 31]
+                if not filter_days:
+                    print("No valid days provided. Using default days.")
+                    filter_days = default_days
+            except ValueError:
+                print("Invalid input. Using default days.")
+                filter_days = default_days
+        else:
+            filter_days = default_days
+            
+        print(f"Analyzing only days: {filter_days}")
+    
+    get_best_buy_dates(symbol, years, filter_days)
 
 if __name__ == "__main__":
     main()
