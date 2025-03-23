@@ -2,20 +2,70 @@ import yfinance as yf
 from datetime import datetime, timedelta
 import calendar
 import matplotlib.pyplot as plt
+import os
+import json
+import pickle
+
+# Create a directory for cached data
+CACHE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "cache")
+if not os.path.exists(CACHE_DIR):
+    os.makedirs(CACHE_DIR)
+
+def get_cached_data(ticker_symbol, years):
+    """Retrieve data from cache if available and still valid (from today)"""
+    today = datetime.now().date().isoformat()
+    cache_file = os.path.join(CACHE_DIR, f"{ticker_symbol}_{years}_{today}.pkl")
+
+    if os.path.exists(cache_file):
+        print(f"Loading cached data for {ticker_symbol} ({years} years)...")
+        try:
+            with open(cache_file, 'rb') as f:
+                return pickle.load(f)
+        except Exception as e:
+            print(f"Error loading cache: {e}")
+
+    # Clean up old cache files for this ticker
+    for filename in os.listdir(CACHE_DIR):
+        if filename.startswith(f"{ticker_symbol}_{years}_") and not filename.endswith(f"{today}.pkl"):
+            try:
+                os.remove(os.path.join(CACHE_DIR, filename))
+            except:
+                pass
+
+    return None
+
+def save_to_cache(ticker_symbol, years, data):
+    """Save data to cache with today's date in the filename"""
+    today = datetime.now().date().isoformat()
+    cache_file = os.path.join(CACHE_DIR, f"{ticker_symbol}_{years}_{today}.pkl")
+
+    try:
+        with open(cache_file, 'wb') as f:
+            pickle.dump(data, f)
+        print(f"Data cached for {ticker_symbol}")
+    except Exception as e:
+        print(f"Error caching data: {e}")
 
 def get_best_buy_dates(ticker_symbol, years=10):
-    # Download specified years of data
-    end_date = datetime.now()
-    start_date = end_date - timedelta(days=365*years)
+    # First check if we have cached data from today
+    df = get_cached_data(ticker_symbol, years)
 
-    print(f"Downloading {years} years of data for {ticker_symbol}...")
-    # Get stock data
-    stock = yf.Ticker(ticker_symbol)
-    df = stock.history(start=start_date, end=end_date)
+    if df is None:
+        # Download specified years of data
+        end_date = datetime.now()
+        start_date = end_date - timedelta(days=365*years)
 
-    if df.empty:
-        print(f"No data found for ticker {ticker_symbol}")
-        return
+        print(f"Downloading {years} years of data for {ticker_symbol}...")
+        # Get stock data
+        stock = yf.Ticker(ticker_symbol)
+        df = stock.history(start=start_date, end=end_date)
+
+        if df.empty:
+            print(f"No data found for ticker {ticker_symbol}")
+            return
+
+        # Cache the data
+        save_to_cache(ticker_symbol, years, df)
 
     print(f"Analyzing {len(df)} days of data...")
 
