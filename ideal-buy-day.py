@@ -205,7 +205,7 @@ def create_day_of_month_visualization(df, ticker_symbol, years, filter_days=None
     # Add text annotation for the best day
     plt.annotate(f'Best Day: {min_day}\n${min_price:.2f}',
                  xy=(min_day, min_price),
-                 xytext=(min_day, min_price - y_range*0.15),  # Position further below bar
+                 xytext=(min_day, min_price - y_range*0.10),
                  arrowprops=dict(facecolor='green', shrink=0.05, width=1.5),
                  ha='center',
                  bbox=dict(boxstyle="round,pad=0.3", fc="white", ec="green", alpha=0.8))
@@ -219,7 +219,7 @@ def create_day_of_month_visualization(df, ticker_symbol, years, filter_days=None
 
     plt.annotate(f'Worst Day: {max_day}\n${max_price:.2f}',
                  xy=(max_day, max_price),
-                 xytext=(max_day + x_offset, max_price + y_range*0.15),  # Position further above bar
+                 xytext=(max_day + x_offset, max_price + y_range*0.08),
                  arrowprops=dict(facecolor='red', shrink=0.05, width=1.5),
                  ha='center',
                  bbox=dict(boxstyle="round,pad=0.3", fc="white", ec="red", alpha=0.8))
