@@ -59,8 +59,17 @@ def create_day_of_month_visualization(df, ticker_symbol, years):
     # Calculate average price for each day of month across all years
     day_avg = df.groupby('Day')['Low'].mean()
 
-    # Create a bar chart
-    plt.figure(figsize=(12, 6))
+    # Create figure with explicit space at the top for the title
+    plt.figure(figsize=(12, 8))  # Increased height even more
+
+    # Add the title at the very top of the figure, outside the axes
+    plt.suptitle(f'Average Low Price by Day of Month for {company_name} ({ticker_symbol})',
+                 fontsize=16, y=0.98)
+
+    # Add a subtitle with years information
+    plt.title(f'{years}-Year Analysis', fontsize=13, pad=20)
+
+    # Create the main plot
     bars = plt.bar(day_avg.index, day_avg.values, color='skyblue')
 
     # Find the day with the lowest average price (best day to buy)
