@@ -3,12 +3,12 @@ from datetime import datetime, timedelta
 import calendar
 import matplotlib.pyplot as plt
 
-def get_best_buy_dates(ticker_symbol):
-    # Download 10 years of data
+def get_best_buy_dates(ticker_symbol, years=10):
+    # Download specified years of data
     end_date = datetime.now()
-    start_date = end_date - timedelta(days=365*10)
+    start_date = end_date - timedelta(days=365*years)
 
-    print(f"Downloading data for {ticker_symbol}...")
+    print(f"Downloading {years} years of data for {ticker_symbol}...")
     # Get stock data
     stock = yf.Ticker(ticker_symbol)
     df = stock.history(start=start_date, end=end_date)
@@ -46,16 +46,16 @@ def get_best_buy_dates(ticker_symbol):
         print(f"Best day to buy in {month_name}: {best_days[month]}")
 
     # Create visualization for average price by day of month (across all months)
-    create_day_of_month_visualization(df, ticker_symbol)
+    create_day_of_month_visualization(df, ticker_symbol, years)
 
-def create_day_of_month_visualization(df, ticker_symbol):
+def create_day_of_month_visualization(df, ticker_symbol, years):
     # Get company name
     try:
         stock = yf.Ticker(ticker_symbol)
         company_name = stock.info.get('shortName', ticker_symbol)
     except:
         company_name = ticker_symbol  # Fallback if company name can't be retrieved
-    
+
     # Calculate average price for each day of month across all years
     day_avg = df.groupby('Day')['Low'].mean()
 
@@ -77,10 +77,10 @@ def create_day_of_month_visualization(df, ticker_symbol):
     # Highlight the worst day to buy in red
     bars[max_day-1].set_color('red')
 
-    # Add labels and title with company name
+    # Add labels and title with company name and actual years analyzed
     plt.xlabel('Day of Month')
     plt.ylabel('Average Price ($)')
-    plt.title(f'Average Low Price by Day of Month for {company_name} ({ticker_symbol}) (10-Year Analysis)')
+    plt.title(f'Average Low Price by Day of Month for {company_name} ({ticker_symbol}) ({years}-Year Analysis)')
 
     # Add a grid to make it easier to read
     plt.grid(axis='y', linestyle='--', alpha=0.7)
@@ -122,13 +122,29 @@ def create_day_of_month_visualization(df, ticker_symbol):
                                                 fc="white", ec="black", alpha=0.8))
 
     plt.tight_layout()
-    plt.savefig(f'{ticker_symbol}_day_analysis.png')
-    print(f"Chart saved as {ticker_symbol}_day_analysis.png")
+    plt.savefig(f'{ticker_symbol}_{years}yr_day_analysis.png')
+    print(f"Chart saved as {ticker_symbol}_{years}yr_day_analysis.png")
     plt.show()
 
 def main():
     symbol = input("Enter stock ticker symbol: ").upper()
-    get_best_buy_dates(symbol)
+
+    # Get the number of years to analyze with error handling
+    while True:
+        try:
+            years_input = input("Enter number of years to analyze (default is 10): ")
+            if years_input == "":
+                years = 10
+                break
+            years = int(years_input)
+            if years <= 0:
+                print("Please enter a positive number of years.")
+                continue
+            break
+        except ValueError:
+            print("Please enter a valid number.")
+
+    get_best_buy_dates(symbol, years)
 
 if __name__ == "__main__":
     main()
