@@ -8,10 +8,14 @@ import pickle
 import argparse
 import sys
 
-# Create a directory for cached data
+# Create directories for cached data and images
 CACHE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "cache")
-if not os.path.exists(CACHE_DIR):
-    os.makedirs(CACHE_DIR)
+IMAGES_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "images")
+
+# Create directories if they don't exist
+for directory in [CACHE_DIR, IMAGES_DIR]:
+    if not os.path.exists(directory):
+        os.makedirs(directory)
 
 def get_cached_data(ticker_symbol, years):
     """Retrieve data from cache if available and still valid (from today)"""
@@ -252,10 +256,13 @@ def create_day_of_month_visualization(df, ticker_symbol, years, filter_days=None
     plt.subplots_adjust(top=0.88, bottom=0.12, left=0.1, right=0.9)
 
     # Create filename with filter indication if used
-    filename_suffix = "_filtered" if filter_days else ""
-    plt.savefig(f'{ticker_symbol}_{years}yr{filename_suffix}_day_analysis.png',
-                bbox_inches='tight', dpi=300)  # Higher resolution and tight bounding box
-    print(f"Chart saved as {ticker_symbol}_{years}yr{filename_suffix}_day_analysis.png")
+    filter_suffix = "_filtered" if filter_days else ""
+    filename = f'{ticker_symbol}_{years}yr{filter_suffix}_day_analysis.png'
+    
+    # Save image to the images directory
+    image_path = os.path.join(IMAGES_DIR, filename)
+    plt.savefig(image_path, bbox_inches='tight', dpi=300)  # Higher resolution and tight bounding box
+    print(f"Chart saved as {image_path}")
     plt.show()
 
 def parse_args():
