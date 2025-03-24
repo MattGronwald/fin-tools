@@ -265,52 +265,53 @@ def create_day_of_month_visualization(df, ticker_symbol, years, filter_days=None
     print(f"Chart saved as {image_path}")
     plt.show()
 
-def parse_args():
+def parse_args(default_years=10, default_broker_days=None):
     parser = argparse.ArgumentParser(description='Analyze the best days to buy a stock.')
 
     parser.add_argument('ticker', nargs='?', help='Stock ticker symbol')
-    parser.add_argument('-y', '--years', type=int, default=10,
-                        help='Number of years to analyze (default: 10)')
+    parser.add_argument('-y', '--years', type=int, default=default_years,
+                        help=f'Number of years to analyze (default: {default_years})')
     parser.add_argument('-d', '--days', type=int, nargs='+',
-                        help='Specific days of month to analyze (e.g., 1 4 7 10 13 16 19 22 25)')
+                        help=f'Specific days of month to analyze (e.g., {", ".join(map(str, default_broker_days)) if default_broker_days else "1 15 28"})')
     parser.add_argument('--broker-days', action='store_true',
-                        help='Use default broker days (1, 4, 7, 10, 13, 16, 19, 22, 25)')
-
+                        help=f'Use default broker days ({", ".join(map(str, default_broker_days)) if default_broker_days else "None defined"})')
+    
     return parser.parse_args()
 
 def main():
-    # Parse command line arguments
-    args = parse_args()
-
-    # Default broker allowed days
-    default_broker_days = [1, 4, 7, 10, 13, 16, 19, 22, 25]
-
+    # Define default values in a single place
+    DEFAULT_YEARS = 10
+    DEFAULT_BROKER_DAYS = [1, 4, 7, 10, 13, 16, 19, 22, 25]
+    
+    # Parse command line arguments with defaults
+    args = parse_args(default_years=DEFAULT_YEARS, default_broker_days=DEFAULT_BROKER_DAYS)
+    
     # Check if we're running with command line arguments
     if args.ticker:
         symbol = args.ticker.upper()
         years = args.years
-
+        
         # Determine which days to filter by
         filter_days = None
         if args.broker_days:
-            filter_days = default_broker_days
+            filter_days = DEFAULT_BROKER_DAYS
             print(f"Using default broker days: {filter_days}")
         elif args.days:
             filter_days = [day for day in args.days if 1 <= day <= 31]
             print(f"Analyzing only days: {filter_days}")
-
+            
         get_best_buy_dates(symbol, years, filter_days)
         return
-
+    
     # If no command line arguments, use interactive mode
     symbol = input("Enter stock ticker symbol: ").upper()
 
     # Get the number of years to analyze with error handling
     while True:
         try:
-            years_input = input("Enter number of years to analyze (default is 10): ")
+            years_input = input(f"Enter number of years to analyze (default is {DEFAULT_YEARS}): ")
             if years_input == "":
-                years = 10
+                years = DEFAULT_YEARS
                 break
             years = int(years_input)
             if years <= 0:
@@ -319,15 +320,15 @@ def main():
             break
         except ValueError:
             print("Please enter a valid number.")
-
+    
     # Ask if user wants to filter to specific days
     filter_option = input("Do you want to analyze specific days only? (y/n, default is n): ").lower()
-
+    
     filter_days = None
     if filter_option == 'y':
-        print(f"Default broker allowed days: {default_broker_days}")
+        print(f"Default broker allowed days: {DEFAULT_BROKER_DAYS}")
         custom_days = input("Enter your custom days separated by commas, or press Enter to use defaults: ")
-
+        
         if custom_days.strip():
             try:
                 filter_days = [int(day.strip()) for day in custom_days.split(',')]
@@ -335,15 +336,15 @@ def main():
                 filter_days = [day for day in filter_days if 1 <= day <= 31]
                 if not filter_days:
                     print("No valid days provided. Using default days.")
-                    filter_days = default_broker_days
+                    filter_days = DEFAULT_BROKER_DAYS
             except ValueError:
                 print("Invalid input. Using default days.")
-                filter_days = default_broker_days
+                filter_days = DEFAULT_BROKER_DAYS
         else:
-            filter_days = default_broker_days
-
+            filter_days = DEFAULT_BROKER_DAYS
+            
         print(f"Analyzing only days: {filter_days}")
-
+    
     get_best_buy_dates(symbol, years, filter_days)
 
 if __name__ == "__main__":
