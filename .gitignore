@@ -190,3 +190,8 @@ image/
 
 # Cache files
 cache/
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
