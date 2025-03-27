@@ -3,10 +3,8 @@ from datetime import datetime, timedelta
 import calendar
 import matplotlib.pyplot as plt
 import os
-import json
 import pickle
 import argparse
-import sys
 
 # Create directories for cached data and images
 CACHE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "cache")
@@ -186,7 +184,7 @@ def create_day_of_month_visualization(df, ticker_symbol, years, filter_days=None
 
     # Add average price text with a white background for better visibility
     # Position it at the right side but with an offset to avoid x-axis labels
-    avg_text = plt.text(
+    plt.text(
         max(day_avg.index) * 0.9,  # Move it left a bit from the end
         avg_price * 1.015,  # Position it slightly above the line
         f'Avg: ${avg_price:.2f}',
@@ -258,7 +256,7 @@ def create_day_of_month_visualization(df, ticker_symbol, years, filter_days=None
     # Create filename with filter indication if used
     filter_suffix = "_filtered" if filter_days else ""
     filename = f'{ticker_symbol}_{years}yr{filter_suffix}_day_analysis.png'
-    
+
     # Save image to the images directory
     image_path = os.path.join(IMAGES_DIR, filename)
     plt.savefig(image_path, bbox_inches='tight', dpi=300)  # Higher resolution and tight bounding box
@@ -275,22 +273,22 @@ def parse_args(default_years=10, default_broker_days=None):
                         help=f'Specific days of month to analyze (e.g., {", ".join(map(str, default_broker_days)) if default_broker_days else "1 15 28"})')
     parser.add_argument('--broker-days', action='store_true',
                         help=f'Use default broker days ({", ".join(map(str, default_broker_days)) if default_broker_days else "None defined"})')
-    
+
     return parser.parse_args()
 
 def main():
     # Define default values in a single place
     DEFAULT_YEARS = 10
     DEFAULT_BROKER_DAYS = [1, 4, 7, 10, 13, 16, 19, 22, 25]
-    
+
     # Parse command line arguments with defaults
     args = parse_args(default_years=DEFAULT_YEARS, default_broker_days=DEFAULT_BROKER_DAYS)
-    
+
     # Check if we're running with command line arguments
     if args.ticker:
         symbol = args.ticker.upper()
         years = args.years
-        
+
         # Determine which days to filter by
         filter_days = None
         if args.broker_days:
@@ -299,10 +297,10 @@ def main():
         elif args.days:
             filter_days = [day for day in args.days if 1 <= day <= 31]
             print(f"Analyzing only days: {filter_days}")
-            
+
         get_best_buy_dates(symbol, years, filter_days)
         return
-    
+
     # If no command line arguments, use interactive mode
     symbol = input("Enter stock ticker symbol: ").upper()
 
@@ -320,15 +318,15 @@ def main():
             break
         except ValueError:
             print("Please enter a valid number.")
-    
+
     # Ask if user wants to filter to specific days
     filter_option = input("Do you want to analyze specific days only? (y/n, default is n): ").lower()
-    
+
     filter_days = None
     if filter_option == 'y':
         print(f"Default broker allowed days: {DEFAULT_BROKER_DAYS}")
         custom_days = input("Enter your custom days separated by commas, or press Enter to use defaults: ")
-        
+
         if custom_days.strip():
             try:
                 filter_days = [int(day.strip()) for day in custom_days.split(',')]
@@ -342,9 +340,9 @@ def main():
                 filter_days = DEFAULT_BROKER_DAYS
         else:
             filter_days = DEFAULT_BROKER_DAYS
-            
+
         print(f"Analyzing only days: {filter_days}")
-    
+
     get_best_buy_dates(symbol, years, filter_days)
 
 if __name__ == "__main__":
