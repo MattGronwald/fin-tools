@@ -1,4 +1,5 @@
 import yfinance as yf
+import pandas as pd
 from datetime import datetime, timedelta
 import calendar
 import matplotlib.pyplot as plt
@@ -63,9 +64,33 @@ def download_stock_data(ticker_symbol, years):
 
     print(f"Downloading {years} years of data for {ticker_symbol}...")
     stock = yf.Ticker(ticker_symbol)
-    df = stock.history(start=start_date, end=end_date)
+    df = None
 
-    if df.empty:
+    try:
+        df = stock.history(start=start_date, end=end_date)
+    except Exception as exc:
+        print(f"Primary Yahoo Finance request failed: {exc}")
+
+    if df is None or df.empty:
+        print("Retrying with yf.download fallback...")
+        try:
+            df = yf.download(
+                ticker_symbol,
+                start=start_date,
+                end=end_date,
+                progress=False,
+                auto_adjust=False
+            )
+            if isinstance(df.columns, pd.MultiIndex):
+                try:
+                    df = df.xs(ticker_symbol, axis=1, level=-1)
+                except (KeyError, ValueError):
+                    df.columns = df.columns.get_level_values(0)
+        except Exception as fallback_exc:
+            print(f"Fallback download failed: {fallback_exc}")
+            df = None
+
+    if df is None or df.empty:
         print(f"No data found for ticker {ticker_symbol}")
         return None
 
