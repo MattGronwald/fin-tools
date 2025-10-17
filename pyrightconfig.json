@@ -1,0 +1,14 @@
+{
+  "venvPath": ".",
+  "venv": ".venv",
+  "stubPath": "typings",
+  "executionEnvironments": [
+    {
+      "root": "."
+    }
+  ],
+  "reportUnknownMemberType": "none",
+  "reportUnknownVariableType": "none",
+  "reportUnnecessaryCast": "none",
+  "reportAny": "none"
+}
