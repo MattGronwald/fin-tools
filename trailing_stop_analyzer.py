@@ -6,12 +6,11 @@ import argparse
 import math
 import sys
 from dataclasses import dataclass
-from datetime import timedelta
 from typing import Sequence
 
 import numpy as np
 import pandas as pd
-import yfinance as yf
+from src.cache_utils import CacheError, get_price_history
 
 
 class AnalyzerError(Exception):
@@ -125,24 +124,14 @@ def validate_parameters(args: argparse.Namespace) -> None:
 def fetch_adjusted_closes(symbol: str, years: int) -> pd.Series:
     """Download adjusted close prices for the requested ticker and time span."""
 
-    end_date = pd.Timestamp.today().normalize()
-    start_date = end_date - pd.DateOffset(years=years)
-
     try:
-        frame = yf.download(
-            symbol,
-            start=start_date,
-            end=end_date + timedelta(days=1),
-            auto_adjust=False,
-            progress=False,
-            actions=False,
-        )
-    except Exception as exc:  # pragma: no cover - network failure path
-        raise AnalyzerError(f"Failed to download data for {symbol}: {exc}") from exc
+        frame = get_price_history(symbol, years)
+    except CacheError as exc:
+        raise AnalyzerError(f"Unable to retrieve price history for {symbol}: {exc}") from exc
 
-    if frame.empty or "Adj Close" not in frame:
+    if "Adj Close" not in frame:
         raise AnalyzerError(
-            f"No adjusted close data found for {symbol}. Verify the ticker and try again."
+            f"Cached data for {symbol} is missing adjusted closes. Try refreshing later."
         )
 
     prices = frame["Adj Close"].dropna()

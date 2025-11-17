@@ -3,10 +3,8 @@ from __future__ import annotations
 import argparse
 import calendar
 import os
-import pickle
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
-from datetime import datetime
 from typing import cast
 
 import matplotlib.pyplot as plt
@@ -16,107 +14,22 @@ import numpy as np
 import pandas as pd
 from pandas import DataFrame, Series
 import yfinance as yf
+from src.cache_utils import CacheError, get_price_history
 
 
-def create_required_directories() -> tuple[str, str]:
-    """Create necessary directories for cache and images."""
-    cache_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "cache")
+def ensure_images_directory() -> str:
+    """Create the images directory if it does not exist."""
+
     images_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "images")
-
-    for directory in (cache_dir, images_dir):
-        if not os.path.exists(directory):
-            os.makedirs(directory)
-
-    return cache_dir, images_dir
+    if not os.path.exists(images_dir):
+        os.makedirs(images_dir)
+    return images_dir
 
 
-CACHE_DIR, IMAGES_DIR = create_required_directories()
+IMAGES_DIR = ensure_images_directory()
 
 DaySummary = dict[int, int | str]
 FilterDays = Sequence[int] | None
-
-
-def get_cached_data(ticker_symbol: str, years: int) -> DataFrame | None:
-    """Retrieve data from cache if available and still valid (from today)."""
-    today = datetime.now().date().isoformat()
-    cache_file = os.path.join(CACHE_DIR, f"{ticker_symbol}_{years}_{today}.pkl")
-
-    if os.path.exists(cache_file):
-        print(f"Loading cached data for {ticker_symbol} ({years} years)...")
-        try:
-            with open(cache_file, "rb") as cache_handle:
-                return cast(DataFrame, pickle.load(cache_handle))
-        except Exception as exc:
-            print(f"Error loading cache: {exc}")
-
-    clean_old_cache_files(ticker_symbol, years, today)
-    return None
-
-
-def clean_old_cache_files(ticker_symbol: str, years: int, today: str) -> None:
-    """Remove outdated cache files for the ticker."""
-    for filename in os.listdir(CACHE_DIR):
-        has_prefix = filename.startswith(f"{ticker_symbol}_{years}_")
-        is_latest = filename.endswith(f"{today}.pkl")
-        if has_prefix and not is_latest:
-            try:
-                os.remove(os.path.join(CACHE_DIR, filename))
-            except Exception as exc:
-                print(f"Unable to delete stale cache file {filename}: {exc}")
-
-
-def save_to_cache(ticker_symbol: str, years: int, data: DataFrame) -> None:
-    """Save data to cache with today's date in the filename."""
-    today = datetime.now().date().isoformat()
-    cache_file = os.path.join(CACHE_DIR, f"{ticker_symbol}_{years}_{today}.pkl")
-
-    try:
-        with open(cache_file, "wb") as cache_handle:
-            pickle.dump(data, cache_handle)
-        print(f"Data cached for {ticker_symbol}")
-    except Exception as exc:
-        print(f"Error caching data: {exc}")
-
-
-def download_stock_data(ticker_symbol: str, years: int) -> DataFrame | None:
-    """Download historical stock data for the given ticker and years."""
-    end_date = pd.Timestamp.now()
-    start_date = end_date - pd.Timedelta(days=365 * years)
-
-    print(f"Downloading {years} years of data for {ticker_symbol}...")
-    stock = yf.Ticker(ticker_symbol)
-    df: DataFrame | None = None
-
-    try:
-        df = stock.history(start=start_date, end=end_date)
-    except Exception as exc:
-        print(f"Primary Yahoo Finance request failed: {exc}")
-
-    if df is None or df.empty:
-        print("Retrying with yf.download fallback...")
-        try:
-            fallback_df = yf.download(
-                ticker_symbol,
-                start=start_date,
-                end=end_date,
-                progress=False,
-                auto_adjust=False,
-            )
-            if isinstance(fallback_df.columns, pd.MultiIndex):
-                try:
-                    fallback_df = fallback_df.droplevel(-1, axis=1)
-                except (KeyError, ValueError):
-                    fallback_df.columns = fallback_df.columns.get_level_values(0)
-            df = fallback_df
-        except Exception as fallback_exc:
-            print(f"Fallback download failed: {fallback_exc}")
-            df = None
-
-    if df is None or df.empty:
-        print(f"No data found for ticker {ticker_symbol}")
-        return None
-
-    return df
 
 
 def add_date_columns(df: DataFrame) -> DataFrame:
@@ -163,13 +76,11 @@ def get_best_buy_dates(
     filter_days: FilterDays = None,
 ) -> None:
     """Analyze stock data to find best buying dates."""
-    df = get_cached_data(ticker_symbol, years)
-
-    if df is None:
-        df = download_stock_data(ticker_symbol, years)
-        if df is None:
-            return
-        save_to_cache(ticker_symbol, years, df)
+    try:
+        df = get_price_history(ticker_symbol, years)
+    except CacheError as exc:
+        print(f"Unable to retrieve historical data: {exc}")
+        return
 
     print(f"Analyzing {len(df)} days of data...")
     df = add_date_columns(df)

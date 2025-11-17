@@ -58,5 +58,7 @@ including crash filters, minimum pullbacks, and smoothing windows.
 
 - Run `python ideal-buy-day.py` or `python trailing_stop_analyzer.py` directly for
   quick smoke-tests.
+- Both tools share the cached Yahoo Finance downloads managed by `src/cache_utils.py`,
+  so repeating analyses for the same ticker/year span is instantaneous.
 - Generated artifacts live under `cache/` and `images/`; they are ignored by
   default and can be safely deleted between runs.
